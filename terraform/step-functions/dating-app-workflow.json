@@ -1,0 +1,26 @@
+{
+  "Comment": "Dating App Workflow",
+  "StartAt": "RegisterUser",
+  "States": {
+    "RegisterUser": {
+      "Type": "Task",
+      "Resource": "${register_user_arn}",
+      "Next": "CreateProfile"
+    },
+    "CreateProfile": {
+      "Type": "Task",
+      "Resource": "${create_profile_arn}",
+      "Next": "MatchUser"
+    },
+    "MatchUser": {
+      "Type": "Task",
+      "Resource": "${match_user_arn}",
+      "Next": "SendNotification"
+    },
+    "SendNotification": {
+      "Type": "Task",
+      "Resource": "${send_notification_arn}",
+      "End": true
+    }
+  }
+} 

@@ -1,0 +1,8 @@
+{{- $data := (ds "config") -}}
+
+{{ $data.name | default "Project Title" }}
+
+{{ if has $data "terraform_docs" }}
+## Terraform Docs
+{{ $data.terraform_docs }}
+{{ end }}

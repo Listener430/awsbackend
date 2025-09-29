@@ -1,0 +1,38 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraform/
+.terraform.lock.hcl
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Binaries
+bin/
+*.zip
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go
+vendor/
