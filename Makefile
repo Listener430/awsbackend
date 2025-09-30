@@ -1,25 +1,10 @@
-.PHONY: build clean deploy
+# Therma Backend Makefile
+# To Do: add relevant make commands after discussion/kick off with Omar
 
-# Build all Lambda functions
-build:
-	@echo "Building Lambda functions..."
-	GOOS=linux GOARCH=amd64 go build -o bin/bootstrap ./lambda/register-user
-	GOOS=linux GOARCH=amd64 go build -o bin/create-profile ./lambda/create-profile
-	GOOS=linux GOARCH=amd64 go build -o bin/match-user ./lambda/match-user
-	GOOS=linux GOARCH=amd64 go build -o bin/send-notification ./lambda/send-notification
+.PHONY: help
 
-# Clean build artifacts
-clean:
-	@echo "Cleaning build artifacts..."
-	rm -rf ./bin
-
-# Deploy using Terraform
-deploy:
-	@echo "Deploying infrastructure..."
-	terraform init
-	terraform apply -auto-approve
-
-# Run locally
-run-local:
-	@echo "Running locally..."
-	go run cmd/main.go 
+help:
+	@echo "Available commands:"
+	@echo "  help     - Show this help message"
+	@echo ""
+	@echo "To Do: add relevant make commands after discussion/kick off with Omar" 
