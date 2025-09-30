@@ -1,0 +1,29 @@
+{
+  "Comment": "Therma Journal Processing Workflow",
+  "StartAt": "ProcessJournalEntry",
+  "States": {
+    "ProcessJournalEntry": {
+      "Type": "Task",
+      "Resource": "${journal_entry_arn}",
+      "Next": "AuditLog",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ]
+    },
+    "AuditLog": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::s3:putObject",
+      "Parameters": {
+        "Bucket": "therma-audit-logs",
+        "Key": "journal-entries/${$.timestamp}.json",
+        "Body": "$"
+      },
+      "End": true
+    }
+  }
+} 

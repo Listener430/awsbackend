@@ -9,7 +9,7 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = true
 
   tags = {
-    Name = "dating-app-vpc"
+    Name = "therma-vpc"
   }
 }
 
@@ -36,16 +36,16 @@ resource "aws_subnet" "private_2" {
 
 # Create DB subnet group
 resource "aws_db_subnet_group" "postgres" {
-  name       = "dating-app-db-subnet-group"
+  name       = "therma-db-subnet-group"
   subnet_ids = [aws_subnet.private_1.id, aws_subnet.private_2.id]
 
   tags = {
-    Name = "dating-app-db-subnet-group"
+    Name = "therma-db-subnet-group"
   }
 }
 
 resource "aws_security_group" "rds" {
-  name        = "dating-app-rds-sg"
+  name        = "therma-rds-sg"
   description = "Security group for RDS instance"
   vpc_id      = aws_vpc.main.id
 
@@ -59,7 +59,7 @@ resource "aws_security_group" "rds" {
 
 # RDS Instance
 resource "aws_db_instance" "postgres" {
-  identifier           = "dating-app-db"
+  identifier           = "therma-db"
   engine              = "postgres"
   engine_version      = "14.18"
   instance_class      = "db.t3.micro"
@@ -74,7 +74,7 @@ resource "aws_db_instance" "postgres" {
   publicly_accessible    = true
 
   tags = {
-    Name = "dating-app-db"
+    Name = "therma-db"
   }
 
   depends_on = [
@@ -86,7 +86,7 @@ resource "aws_db_instance" "postgres" {
 
 # IAM Role for Lambda functions
 resource "aws_iam_role" "lambda_role" {
-  name = "dating-app-lambda-role"
+  name = "therma-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -104,7 +104,7 @@ resource "aws_iam_role" "lambda_role" {
 
 # IAM Policy for Lambda functions
 resource "aws_iam_role_policy" "lambda_policy" {
-  name = "dating-app-lambda-policy"
+  name = "therma-lambda-policy"
   role = aws_iam_role.lambda_role.id
 
   policy = jsonencode({
@@ -131,9 +131,9 @@ resource "aws_iam_role_policy" "lambda_policy" {
 }
 
 # Lambda Functions
-resource "aws_lambda_function" "register_user" {
-  filename         = "../bin/register-user.zip"
-  function_name    = "register-user"
+resource "aws_lambda_function" "journal_entry" {
+  filename         = "../bin/journal-entry.zip"
+  function_name    = "journal-entry"
   role            = aws_iam_role.lambda_role.arn
   handler         = "bootstrap"
   runtime         = "provided.al2"
@@ -143,69 +143,16 @@ resource "aws_lambda_function" "register_user" {
     variables = {
       DATABASE_URL = "postgres://postgres:${var.db_password}@${aws_db_instance.postgres.endpoint}/postgres?sslmode=disable"
       JWT_SECRET   = var.jwt_secret
-      JWT_ISSUER   = "banking-api"
+      JWT_ISSUER   = "therma-api"
       JWT_TTL      = "1h"
-    }
-  }
-}
-
-resource "aws_lambda_function" "create_profile" {
-  filename         = "../bin/create-profile.zip"
-  function_name    = "create-profile"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "create-profile"
-  runtime         = "provided.al2"
-  timeout         = 30
-
-  environment {
-    variables = {
-      DATABASE_URL = aws_db_instance.postgres.endpoint
-      JWT_SECRET   = var.jwt_secret
-      JWT_ISSUER   = "banking-api"
-      JWT_TTL      = "1h"
-    }
-  }
-}
-
-resource "aws_lambda_function" "match_user" {
-  filename         = "../bin/match-user.zip"
-  function_name    = "match-user"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "match-user"
-  runtime         = "provided.al2"
-  timeout         = 30
-
-  environment {
-    variables = {
-      DATABASE_URL = aws_db_instance.postgres.endpoint
-      JWT_SECRET   = var.jwt_secret
-      JWT_ISSUER   = "banking-api"
-      JWT_TTL      = "1h"
-    }
-  }
-}
-
-resource "aws_lambda_function" "send_notification" {
-  filename         = "../bin/send-notification.zip"
-  function_name    = "send-notification"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "send-notification"
-  runtime         = "provided.al2"
-  timeout         = 30
-
-  environment {
-    variables = {
-      DATABASE_URL = aws_db_instance.postgres.endpoint
-      JWT_SECRET   = var.jwt_secret
-      JWT_ISSUER   = "banking-api"
-      JWT_TTL      = "1h"
+      KMS_KEY_ID   = aws_kms_key.phi_encryption_key.key_id
     }
   }
 }
 
 # Step Functions State Machine
 resource "aws_iam_role" "step_functions_role" {
-  name = "dating-app-step-functions-role"
+  name = "therma-step-functions-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -222,7 +169,7 @@ resource "aws_iam_role" "step_functions_role" {
 }
 
 resource "aws_iam_role_policy" "step_functions_policy" {
-  name = "dating-app-step-functions-policy"
+  name = "therma-step-functions-policy"
   role = aws_iam_role.step_functions_role.id
 
   policy = jsonencode({
@@ -234,24 +181,18 @@ resource "aws_iam_role_policy" "step_functions_policy" {
           "lambda:InvokeFunction"
         ]
         Resource = [
-          aws_lambda_function.register_user.arn,
-          aws_lambda_function.create_profile.arn,
-          aws_lambda_function.match_user.arn,
-          aws_lambda_function.send_notification.arn
+          aws_lambda_function.journal_entry.arn
         ]
       }
     ]
   })
 }
 
-resource "aws_sfn_state_machine" "dating_app" {
-  name     = "dating-app-workflow"
+resource "aws_sfn_state_machine" "journal_processing" {
+  name     = "therma-journal-workflow"
   role_arn = aws_iam_role.step_functions_role.arn
-  definition = templatefile("${path.module}/step-functions/dating-app-workflow.json", {
-    register_user_arn = aws_lambda_function.register_user.arn
-    create_profile_arn = aws_lambda_function.create_profile.arn
-    match_user_arn = aws_lambda_function.match_user.arn
-    send_notification_arn = aws_lambda_function.send_notification.arn
+  definition = templatefile("${path.module}/step-functions/journal-workflow.json", {
+    journal_entry_arn = aws_lambda_function.journal_entry.arn
   })
 }
 
@@ -259,7 +200,7 @@ resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "dating-app-gw"
+    Name = "therma-gw"
   }
 }
 
@@ -287,42 +228,137 @@ resource "aws_route_table_association" "b" {
 }
 
 # API Gateway REST API
-resource "aws_api_gateway_rest_api" "dating_app" {
-  name = "dating-app-api"
+resource "aws_api_gateway_rest_api" "therma_api" {
+  name = "therma-api"
 }
 
-resource "aws_api_gateway_resource" "register" {
-  rest_api_id = aws_api_gateway_rest_api.dating_app.id
-  parent_id   = aws_api_gateway_rest_api.dating_app.root_resource_id
-  path_part   = "register"
+resource "aws_api_gateway_resource" "journal_entries" {
+  rest_api_id = aws_api_gateway_rest_api.therma_api.id
+  parent_id   = aws_api_gateway_rest_api.therma_api.root_resource_id
+  path_part   = "journal-entries"
 }
 
-resource "aws_api_gateway_method" "register_post" {
-  rest_api_id   = aws_api_gateway_rest_api.dating_app.id
-  resource_id   = aws_api_gateway_resource.register.id
+resource "aws_api_gateway_method" "journal_entries_post" {
+  rest_api_id   = aws_api_gateway_rest_api.therma_api.id
+  resource_id   = aws_api_gateway_resource.journal_entries.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_integration" "register_integration" {
-  rest_api_id             = aws_api_gateway_rest_api.dating_app.id
-  resource_id             = aws_api_gateway_resource.register.id
-  http_method             = aws_api_gateway_method.register_post.http_method
+resource "aws_api_gateway_integration" "journal_entries_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.therma_api.id
+  resource_id             = aws_api_gateway_resource.journal_entries.id
+  http_method             = aws_api_gateway_method.journal_entries_post.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.register_user.invoke_arn
+  uri                     = aws_lambda_function.journal_entry.invoke_arn
 }
 
 resource "aws_lambda_permission" "apigw_lambda" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.register_user.function_name
+  function_name = aws_lambda_function.journal_entry.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.dating_app.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.therma_api.execution_arn}/*/*"
 }
 
-resource "aws_api_gateway_deployment" "dating_app" {
-  rest_api_id = aws_api_gateway_rest_api.dating_app.id
+resource "aws_api_gateway_deployment" "therma_api" {
+  rest_api_id = aws_api_gateway_rest_api.therma_api.id
   stage_name  = "prod"
-  depends_on  = [aws_api_gateway_integration.register_integration]
+  depends_on  = [aws_api_gateway_integration.journal_entries_integration]
+}
+
+# KMS Key for PHI Encryption
+resource "aws_kms_key" "phi_encryption_key" {
+  description             = "KMS key for PHI encryption in Therma backend"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  tags = {
+    Name        = "therma-phi-encryption-key"
+    Environment = "dev"
+    Purpose     = "PHI-Encryption"
+    Compliance  = "HIPAA"
+  }
+}
+
+# SQS Queue for Journal Processing
+resource "aws_sqs_queue" "journal_processing_queue" {
+  name                       = "therma-journal-processing"
+  delay_seconds              = 0
+  max_message_size           = 262144
+  message_retention_seconds  = 1209600
+  receive_wait_time_seconds  = 0
+  visibility_timeout_seconds = 300
+
+  kms_master_key_id = aws_kms_key.phi_encryption_key.arn
+  kms_data_key_reuse_period_seconds = 300
+
+  tags = {
+    Name        = "therma-journal-processing"
+    Environment = "dev"
+    Compliance  = "HIPAA"
+  }
+}
+
+# Dead Letter Queue
+resource "aws_sqs_queue" "journal_processing_dlq" {
+  name = "therma-journal-processing-dlq"
+
+  kms_master_key_id = aws_kms_key.phi_encryption_key.arn
+  kms_data_key_reuse_period_seconds = 300
+
+  tags = {
+    Name        = "therma-journal-processing-dlq"
+    Environment = "dev"
+    Compliance  = "HIPAA"
+  }
+}
+
+# S3 Bucket for Audit Logs
+resource "aws_s3_bucket" "audit_logs" {
+  bucket = "therma-audit-logs-${random_string.bucket_suffix.result}"
+
+  tags = {
+    Name        = "therma-audit-logs"
+    Environment = "dev"
+    Compliance  = "HIPAA"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "audit_logs" {
+  bucket = aws_s3_bucket.audit_logs.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "audit_logs" {
+  bucket = aws_s3_bucket.audit_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      kms_master_key_id = aws_kms_key.phi_encryption_key.arn
+      sse_algorithm     = "aws:kms"
+    }
+    bucket_key_enabled = true
+  }
+}
+
+resource "aws_s3_bucket_object_lock_configuration" "audit_logs" {
+  bucket = aws_s3_bucket.audit_logs.id
+
+  rule {
+    default_retention {
+      mode = "GOVERNANCE"
+      days = 2555
+    }
+  }
+}
+
+# Random string for unique bucket names
+resource "random_string" "bucket_suffix" {
+  length  = 8
+  special = false
+  upper   = false
 } 

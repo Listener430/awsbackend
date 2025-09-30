@@ -1,32 +1,33 @@
-# AWS Backend - HIPAA Serverless
+# Therma Backend - Starter Repo
 
-Serverless backend on AWS for journaling/mood tracking. Has HIPAA compliance, idempotency, and LLM cost controls.
+HIPAA-compliant serverless backend starter for journaling and mood tracking. Ready for pilot implementation.
 
-## Stack
-- API Gateway for REST endpoints
-- Lambda functions in Go
-- DynamoDB for idempotency & cost tracking
-- KMS for PHI encryption
-- SQS for async processing
-- Step Functions for workflows
-- CloudTrail for audit logs
-- S3 with Object Lock for immutable logs
-
-## Key Features
+## Architecture Overview
+- API Gateway with Cognito auth
+- Go Lambda functions
+- Aurora PostgreSQL with migrations
 - KMS envelope encryption for PHI
-- Idempotency with DynamoDB
-- LLM cost limits per user
-- Graceful degradation when limits hit
-- Audit logging everywhere
+- SQS + Step Functions for event processing
+- S3 Object Lock for immutable audit logs
+- OpenTelemetry/X-Ray tracing
 
-## Setup
-1. Set AWS creds
-2. Set env vars: JWT_SECRET, KMS_KEY_ID, DATABASE_URL
-3. Deploy: `terraform init && terraform apply`
+## Pilot Scope
+- Auth: Cognito + Apple/Google OIDC
+- Journal API: Go Lambdas with KMS encryption
+- Event Trail: SQS → Step Functions → S3 audit
+- Ops: Terraform, GitHub Actions, one-command deploy
 
-## APIs
-- POST /register - user signup
-- POST /journal-entries - create entry
-- GET /mood-checkins - get mood data
+## Getting Started
+1. Set AWS credentials
+2. Configure environment variables
+3. Deploy infrastructure: `terraform init && terraform apply`
+4. Build and deploy Lambda functions
 
-All PHI encrypted at rest, audit logs in S3, least privilege IAM.
+## Next Steps
+- Add Cognito user pool configuration
+- Implement OIDC providers
+- Add database migrations
+- Set up CI/CD pipeline
+- Add OpenTelemetry instrumentation
+
+This is a starter repo - full implementation requires AWS access and additional configuration.

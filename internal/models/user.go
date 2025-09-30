@@ -12,21 +12,14 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type Profile struct {
+type MoodCheckIn struct {
 	ID          string    `json:"id"`
 	UserID      string    `json:"user_id"`
-	Interests   []string  `json:"interests"`
-	Preferences []string  `json:"preferences"`
+	MoodScore   int       `json:"mood_score"`   // PHI - encrypted at rest
+	Notes       string    `json:"notes"`        // PHI - encrypted at rest
+	Timestamp   time.Time `json:"timestamp"`
 	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-type Match struct {
-	ID        string    `json:"id"`
-	User1ID   string    `json:"user1_id"`
-	User2ID   string    `json:"user2_id"`
-	Score     float64   `json:"score"`
-	CreatedAt time.Time `json:"created_at"`
+	Encrypted   bool      `json:"encrypted"`    // Track encryption status
 }
 
 // HIPAA-compliant models for Therma
@@ -39,16 +32,6 @@ type JournalEntry struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	Encrypted   bool      `json:"encrypted"`   // Track encryption status
-}
-
-type MoodCheckIn struct {
-	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`
-	MoodScore   int       `json:"mood_score"`   // PHI - encrypted at rest
-	Notes       string    `json:"notes"`        // PHI - encrypted at rest
-	Timestamp   time.Time `json:"timestamp"`
-	CreatedAt   time.Time `json:"created_at"`
-	Encrypted   bool      `json:"encrypted"`    // Track encryption status
 }
 
 type IdempotencyKey struct {
